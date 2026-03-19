@@ -4,10 +4,12 @@ using FleetTelemetryAPI.DTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FleetTelemetryAPI.Controllers;
 [Route("api/[controller]")]
 [ApiController]
+[Authorize(Roles = "Admin")]
 public class VehiclesController : ControllerBase
 {
     private readonly FleetContext _context;
@@ -42,7 +44,7 @@ public class VehiclesController : ControllerBase
 
     // GET: api/Vehicles/5
     [HttpGet("{id}")]
-    public async Task<ActionResult> GetVehicleById(int id)
+    public async Task<ActionResult> GetVehicleById([FromRoute] int id)
     {
         var vehicle = await _context.Vehicles
             .Where(v => v.Id == id)
@@ -69,7 +71,7 @@ public class VehiclesController : ControllerBase
 
     // POST: api/Vehicles
     [HttpPost]
-    public async Task<ActionResult> CreateVehicle(VehicleInputDto vehicle)
+    public async Task<ActionResult> CreateVehicle([FromBody] VehicleInputDto vehicle)
     {
         var vehicleExists = await _context.Vehicles.AnyAsync(v => v.RegistrationNumber == vehicle.RegistrationNumber);
 
@@ -110,7 +112,7 @@ public class VehiclesController : ControllerBase
 
     // POST: api/Vehicles/5/status
     [HttpPost("{id}/status")]
-    public async Task<ActionResult> UpdateVehicleStatus(int id)
+    public async Task<ActionResult> UpdateVehicleStatus([FromRoute] int id)
     {
         var vehicle = await _context.Vehicles.FindAsync(id);
 
@@ -139,7 +141,7 @@ public class VehiclesController : ControllerBase
 
     // PUT: api/Vehicles/5
     [HttpPut("{id}")]
-    public async Task<ActionResult> UpdateVehicle(int id, VehicleInputDto vehicle)
+    public async Task<ActionResult> UpdateVehicle([FromRoute] int id,[FromBody]  VehicleInputDto vehicle)
     { 
         var vehicleToUpdate = await _context.Vehicles.FindAsync(id);
 
@@ -169,7 +171,7 @@ public class VehiclesController : ControllerBase
 
     // DELETE: api/Vehicles/5
     [HttpDelete("{id}")]
-    public async Task<ActionResult> DeleteVehicle(int id)
+    public async Task<ActionResult> DeleteVehicle([FromRoute] int id)
     {
         var vehicleToDelete = await _context.Vehicles.FindAsync(id);
 

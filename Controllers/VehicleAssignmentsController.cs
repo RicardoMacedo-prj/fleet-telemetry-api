@@ -1,14 +1,15 @@
-﻿using System.Reflection.Metadata.Ecma335;
-using FleetTelemetryAPI.Data;
+﻿using FleetTelemetryAPI.Data;
 using FleetTelemetryAPI.Models;
 using FleetTelemetryAPI.DTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FleetTelemetryAPI.Controllers;
 [Route("api/[controller]")]
 [ApiController]
+[Authorize(Roles = "Admin")]
 public class VehicleAssignmentsController : ControllerBase
 {
     private readonly FleetContext _context;
@@ -40,7 +41,7 @@ public class VehicleAssignmentsController : ControllerBase
 
     // GET: api/VehicleAssignments/5
     [HttpGet("{id}")]
-    public async Task<ActionResult> GetVehicleAssignmentById(int id)
+    public async Task<ActionResult> GetVehicleAssignmentById([FromRoute] int id)
     {
         var vehicleAssignment = await _context.VehicleAssignments
             .Where(va => va.Id == id)
@@ -66,7 +67,7 @@ public class VehicleAssignmentsController : ControllerBase
 
     // POST: api/VehicleAssignments
     [HttpPost]
-    public async Task<ActionResult> CreateVehicleAssignment(VehicleAssignmentInputDto vehicleAssignment)
+    public async Task<ActionResult> CreateVehicleAssignment([FromBody] VehicleAssignmentInputDto vehicleAssignment)
     {
         DateTime AssignmentDate = DateTime.UtcNow;
 
@@ -134,7 +135,7 @@ public class VehicleAssignmentsController : ControllerBase
 
     // PUT: api/VehicleAssignments/5
     [HttpPut("{id}")]
-    public async Task<ActionResult> UpdateVehicleAssignment(int id, VehicleAssignmentInputDto vehicleAssignment)
+    public async Task<ActionResult> UpdateVehicleAssignment([FromRoute] int id, [FromBody] VehicleAssignmentInputDto vehicleAssignment)
     {
         var AssignmentToUpdate = await _context.VehicleAssignments.FindAsync(id);
 
@@ -187,7 +188,7 @@ public class VehicleAssignmentsController : ControllerBase
 
     // POST: api/VehicleAssignments/5/complete
     [HttpPost("{id}/complete")]
-    public async Task<ActionResult> ReturnVehicle(int id)
+    public async Task<ActionResult> ReturnVehicle([FromRoute] int id)
     {
         var assignment = await _context.VehicleAssignments.FindAsync(id);
 

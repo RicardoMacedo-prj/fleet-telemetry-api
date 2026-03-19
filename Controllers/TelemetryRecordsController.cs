@@ -4,10 +4,12 @@ using FleetTelemetryAPI.DTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FleetTelemetryAPI.Controllers;
 [Route("api/[controller]")]
 [ApiController]
+[Authorize(Roles = "Admin")]
 public class TelemetryRecordsController : ControllerBase
 {
     private readonly FleetContext _context;
@@ -20,7 +22,7 @@ public class TelemetryRecordsController : ControllerBase
 
     // GET: api/TelemetryRecords/VehicleId
     [HttpGet("{VehicleId}")]
-    public async Task<ActionResult> GetTelemetryRecordById(int vehicleId)
+    public async Task<ActionResult> GetTelemetryRecordById([FromRoute] int vehicleId)
     {
         var telemetryRecord = await _context.TelemetryRecords
             .Where(tr => tr.VehicleId == vehicleId)
@@ -48,7 +50,7 @@ public class TelemetryRecordsController : ControllerBase
 
     // POST: api/TelemetryRecords
     [HttpPost]
-    public async Task<ActionResult> CreateTelemetryRecord(TelemetryRecordInputDto telemetryRecord)
+    public async Task<ActionResult> CreateTelemetryRecord([FromBody] TelemetryRecordInputDto telemetryRecord)
     {
 
         var ValidVehicle = await _context.Vehicles

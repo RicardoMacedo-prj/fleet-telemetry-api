@@ -5,10 +5,12 @@ using FleetTelemetryAPI.DTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FleetTelemetryAPI.Controllers;
 [Route("api/[controller]")]
 [ApiController]
+[Authorize(Roles = "Admin")]
 public class DriversController : ControllerBase
 {
     private readonly FleetContext _context;
@@ -38,7 +40,7 @@ public class DriversController : ControllerBase
 
     // GET: api/Drivers/5
     [HttpGet("{id}")]
-    public async Task<ActionResult> GetDriverById(int id)
+    public async Task<ActionResult> GetDriverById([FromRoute] int id)
     {
         var driver = await _context.Drivers
             .Where(d => d.Id == id)
@@ -62,7 +64,7 @@ public class DriversController : ControllerBase
 
     // POST: api/Drivers
     [HttpPost]
-    public async Task<ActionResult> CreateDriver(DriverInputDto driver)
+    public async Task<ActionResult> CreateDriver([FromBody] DriverInputDto driver)
     {
         var driverExists = await _context.Drivers.AnyAsync(d => d.LicenseNumber == driver.LicenseNumber);
 
@@ -95,7 +97,7 @@ public class DriversController : ControllerBase
 
     // PUT: api/Drivers/5
     [HttpPut("{id}")]
-    public async Task<ActionResult> UpdateDriver(int id, DriverInputDto driver)
+    public async Task<ActionResult> UpdateDriver([FromRoute] int id, [FromBody] DriverInputDto driver)
     {
         var driverToUpdate = await _context.Drivers.FindAsync(id);
 
@@ -121,7 +123,7 @@ public class DriversController : ControllerBase
 
     // DELETE: api/Drivers/5
     [HttpDelete("{id}")]
-    public async Task<ActionResult> DeleteDriver(int id)
+    public async Task<ActionResult> DeleteDriver([FromRoute] int id)
     {
         var driver = await _context.Drivers.FindAsync(id);
 
