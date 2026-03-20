@@ -22,11 +22,20 @@ public class TelemetryRecordsController : ControllerBase
 
     // GET: api/TelemetryRecords/VehicleId
     [HttpGet("{VehicleId}")]
-    public async Task<ActionResult> GetTelemetryRecordById([FromRoute] int vehicleId)
+    public async Task<ActionResult> GetTelemetryRecordById([FromRoute] int vehicleId, [FromQuery] PaginationQueryDto pagination)
     {
-        var telemetryRecord = await _context.TelemetryRecords
-            .Where(tr => tr.VehicleId == vehicleId)
+        var telemetryQuery = _context.TelemetryRecords.Where(tr => tr.VehicleId == vehicleId);
+        var totalRecords = await telemetryQuery.CountAsync();
+
+        if (totalRecords == 0)
+        {
+            return NotFound("No records found.");
+        }
+
+        var telemetryRecord = await telemetryQuery
             .OrderByDescending(tr => tr.Timestamp)
+            .Skip((pagination.PageNumber - 1) * pagination.PageSize)
+            .Take(pagination.PageSize)
             .Select(telemetryRecord => new TelemetryRecordOutputDto
             {
                 Id = telemetryRecord.Id,
@@ -40,12 +49,15 @@ public class TelemetryRecordsController : ControllerBase
             })
             .ToListAsync();
 
-        if (!telemetryRecord.Any())
+        var result = new PaginatedResultDto<TelemetryRecordOutputDto>
         {
-            return NotFound("No records found.");
-        }
+            TotalCount = totalRecords,
+            PageNumber = pagination.PageNumber,
+            PageSize = pagination.PageSize,
+            Data = telemetryRecord
+        };
 
-        return Ok(telemetryRecord);
+        return Ok(result);
     }
 
     // POST: api/TelemetryRecords

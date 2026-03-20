@@ -22,10 +22,14 @@ public class DriversController : ControllerBase
 
     // GET: api/Drivers
     [HttpGet]
-    public async Task<ActionResult> GetAllDrivers()
+    public async Task<ActionResult> GetAllDrivers([FromQuery] PaginationQueryDto pagination)
     {
-        var drivers = await _context.Drivers
-            .Where(d => d.IsActive)
+        var driverQuery = _context.Drivers.Where(d => d.IsActive);
+        var totalDrivers = await driverQuery.CountAsync();
+
+        var drivers = await driverQuery
+            .Skip((pagination.PageNumber -1) * pagination.PageSize)
+            .Take(pagination.PageSize)
             .Select(drivers => new DriverOutputDto
             {
                 Id = drivers.Id,
@@ -35,7 +39,16 @@ public class DriversController : ControllerBase
                 IsActive = drivers.IsActive
             })
             .ToListAsync();
-        return Ok(drivers);
+
+        var result = new PaginatedResultDto<DriverOutputDto>
+        {
+            TotalCount = totalDrivers,
+            PageNumber = pagination.PageNumber,
+            PageSize = pagination.PageSize,
+            Data = drivers
+        };
+
+        return Ok(result);
     }
 
     // GET: api/Drivers/5

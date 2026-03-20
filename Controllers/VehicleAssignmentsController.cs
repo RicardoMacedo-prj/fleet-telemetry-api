@@ -21,9 +21,14 @@ public class VehicleAssignmentsController : ControllerBase
 
     // GET: api/VehicleAssignments
     [HttpGet]
-    public async Task<ActionResult> GetAllVehicleAssignments()
+    public async Task<ActionResult> GetAllVehicleAssignments([FromQuery] PaginationQueryDto pagination)
     {
-        var vehicleAssignments = await _context.VehicleAssignments
+        var vehicleAssignmentQuery = _context.VehicleAssignments;
+        var totalAssignemnts = await vehicleAssignmentQuery.CountAsync();
+
+        var vehicleAssignments = await vehicleAssignmentQuery
+            .Skip((pagination.PageNumber -1) * pagination.PageSize)
+            .Take(pagination.PageSize)
             .Select(vehicleAssignments => new VehicleAssignmentOutputDto
             {
                 Id = vehicleAssignments.Id,
@@ -35,8 +40,17 @@ public class VehicleAssignmentsController : ControllerBase
                 ReturnDate = vehicleAssignments.ReturnDate,
                 Status = vehicleAssignments.Status.ToString()
             })
-            .ToListAsync(); 
-        return Ok(vehicleAssignments);
+            .ToListAsync();
+
+        var result = new PaginatedResultDto<VehicleAssignmentOutputDto>
+        {
+            TotalCount = totalAssignemnts,
+            PageNumber = pagination.PageNumber,
+            PageSize = pagination.PageSize,
+            Data = vehicleAssignments
+        };
+
+        return Ok(result);
     }
 
     // GET: api/VehicleAssignments/5

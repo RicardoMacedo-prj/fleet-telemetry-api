@@ -21,10 +21,17 @@ public class VehiclesController : ControllerBase
 
     // GET: api/Vehicles
     [HttpGet]
-    public async Task<ActionResult> GetAllVehicles()
+    public async Task<ActionResult> GetAllVehicles([FromQuery] PaginationQueryDto pagination)
     {
-        var vehicles = await _context.Vehicles
-            .Where(v => v.Status == VehicleStatus.Maintenance || v.Status == VehicleStatus.Active)
+        var vehicleQuery = _context.Vehicles
+            .Where(v => v.Status == VehicleStatus.Active || v.Status == VehicleStatus.Maintenance);
+        var totalVehicles = await vehicleQuery.CountAsync();
+
+        
+        
+        var vehicles = await vehicleQuery
+            .Skip((pagination.PageNumber -1) * pagination.PageSize)
+            .Take(pagination.PageSize)
             .Select(vehicles => new VehicleOutputDto
             {
                 Id = vehicles.Id,
@@ -38,7 +45,15 @@ public class VehiclesController : ControllerBase
             })
             .ToListAsync();
 
-        return Ok(vehicles);
+        var result = new PaginatedResultDto<VehicleOutputDto>
+        {
+            TotalCount = totalVehicles,
+            PageNumber = pagination.PageNumber,
+            PageSize = pagination.PageSize,
+            Data = vehicles
+        };
+
+        return Ok(result);
     }
 
 
