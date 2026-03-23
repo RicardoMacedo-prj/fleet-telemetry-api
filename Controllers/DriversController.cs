@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using FleetTelemetryAPI.Services;
 
 namespace FleetTelemetryAPI.Controllers;
 [Route("api/[controller]")]
@@ -13,59 +14,26 @@ namespace FleetTelemetryAPI.Controllers;
 [Authorize(Roles = "Admin")]
 public class DriversController : ControllerBase
 {
-    private readonly FleetContext _context;
+    private readonly IDriverService _service;
 
-    public DriversController(FleetContext context)
+    public DriversController(IDriverService service)
     {
-        _context = context;
+        _service = service;
     }
 
     // GET: api/Drivers
     [HttpGet]
     public async Task<ActionResult> GetAllDrivers([FromQuery] PaginationQueryDto pagination)
     {
-        var driverQuery = _context.Drivers.Where(d => d.IsActive);
-        var totalDrivers = await driverQuery.CountAsync();
-
-        var drivers = await driverQuery
-            .Skip((pagination.PageNumber -1) * pagination.PageSize)
-            .Take(pagination.PageSize)
-            .Select(drivers => new DriverOutputDto
-            {
-                Id = drivers.Id,
-                Name = drivers.Name,
-                LicenseNumber = drivers.LicenseNumber,
-                LicenseCategory = drivers.LicenseCategory,
-                IsActive = drivers.IsActive
-            })
-            .ToListAsync();
-
-        var result = new PaginatedResultDto<DriverOutputDto>
-        {
-            TotalCount = totalDrivers,
-            PageNumber = pagination.PageNumber,
-            PageSize = pagination.PageSize,
-            Data = drivers
-        };
-
-        return Ok(result);
+        var drivers = await _service.GetAllDriversAsync(pagination);
+        return Ok(drivers);
     }
 
     // GET: api/Drivers/5
     [HttpGet("{id}")]
     public async Task<ActionResult> GetDriverById([FromRoute] int id)
     {
-        var driver = await _context.Drivers
-            .Where(d => d.Id == id)
-            .Select(drivers => new DriverOutputDto
-            {
-                Id = drivers.Id,
-                Name = drivers.Name,
-                LicenseNumber = drivers.LicenseNumber,
-                LicenseCategory = drivers.LicenseCategory,
-                IsActive = drivers.IsActive
-            })
-            .FirstOrDefaultAsync();
+        var driver = await _service.GetDriverByIdAsync(id);
 
         if (driver == null)
         {
@@ -79,58 +47,32 @@ public class DriversController : ControllerBase
     [HttpPost]
     public async Task<ActionResult> CreateDriver([FromBody] DriverInputDto driver)
     {
-        var driverExists = await _context.Drivers.AnyAsync(d => d.LicenseNumber == driver.LicenseNumber);
+        var result = await _service.CreateDriverAsync(driver);
 
-        if (driverExists)
+        if (!result.IsSuccess)
         {
-            return Conflict("A driver with the same license number already exists.");
+            return Conflict(result.ErrorMessage.Substring(10));
         }
 
-        var newDriver = new Driver
-        {
-            Name = driver.Name,
-            LicenseNumber = driver.LicenseNumber,
-            LicenseCategory = driver.LicenseCategory,
-        };
-
-        _context.Drivers.Add(newDriver);
-        await _context.SaveChangesAsync();
-
-        var outputDriver = new DriverOutputDto
-        {
-            Id = newDriver.Id,
-            Name = newDriver.Name,
-            LicenseNumber = newDriver.LicenseNumber,
-            LicenseCategory = newDriver.LicenseCategory,
-            IsActive = newDriver.IsActive
-        };
-
-        return CreatedAtAction(nameof(GetDriverById), new { id = newDriver.Id }, outputDriver);
+        return CreatedAtAction(nameof(GetDriverById), new { id = result.Data!.Id }, result.Data);
     }
 
     // PUT: api/Drivers/5
     [HttpPut("{id}")]
     public async Task<ActionResult> UpdateDriver([FromRoute] int id, [FromBody] DriverInputDto driver)
     {
-        var driverToUpdate = await _context.Drivers.FindAsync(id);
+        var result = await _service.UpdateDriverAsync(id, driver);
 
-        if (driverToUpdate == null)
+        if (!result.IsSuccess)
         {
-            return NotFound();
+            if (result.ErrorMessage.StartsWith("Not Found"))
+            {
+                return NotFound();
+            }
+
+            return Conflict(result.ErrorMessage.Substring(10));
         }
 
-        var driverDuplicated = await _context.Drivers.AnyAsync(d => d.LicenseNumber == driver.LicenseNumber && d.Id != id);
-
-        if (driverDuplicated)
-        {
-            return Conflict("A driver with the same license number already exists.");
-        }
-
-        driverToUpdate.Name = driver.Name;
-        driverToUpdate.LicenseNumber = driver.LicenseNumber;
-        driverToUpdate.LicenseCategory = driver.LicenseCategory;
-
-        await _context.SaveChangesAsync();
         return NoContent();
     }
 
@@ -138,15 +80,13 @@ public class DriversController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteDriver([FromRoute] int id)
     {
-        var driver = await _context.Drivers.FindAsync(id);
+        var result =await _service.DeleteDriverAsync(id);
 
-        if (driver == null)
+        if (!result)
         {
             return NotFound();
         }
 
-        driver.IsActive = false;
-        await _context.SaveChangesAsync();
         return NoContent();
         
     }

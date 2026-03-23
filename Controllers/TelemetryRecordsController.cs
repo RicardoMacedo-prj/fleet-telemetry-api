@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using FleetTelemetryAPI.Services;
 
 namespace FleetTelemetryAPI.Controllers;
 [Route("api/[controller]")]
@@ -12,11 +13,11 @@ namespace FleetTelemetryAPI.Controllers;
 [Authorize(Roles = "Admin")]
 public class TelemetryRecordsController : ControllerBase
 {
-    private readonly FleetContext _context;
+    private readonly ITelemetryRecordService _service;
 
-    public TelemetryRecordsController(FleetContext context)
+    public TelemetryRecordsController(ITelemetryRecordService service)
     {
-        _context = context;
+        _service = service;
     }
 
 
@@ -24,40 +25,14 @@ public class TelemetryRecordsController : ControllerBase
     [HttpGet("{VehicleId}")]
     public async Task<ActionResult> GetTelemetryRecordById([FromRoute] int vehicleId, [FromQuery] PaginationQueryDto pagination)
     {
-        var telemetryQuery = _context.TelemetryRecords.Where(tr => tr.VehicleId == vehicleId);
-        var totalRecords = await telemetryQuery.CountAsync();
+        var records = await _service.GetTelemetryRecordByIdAsync(vehicleId, pagination);
 
-        if (totalRecords == 0)
+        if (records.TotalCount == 0)
         {
-            return NotFound("No records found.");
-        }
+            return NotFound();
+        } 
 
-        var telemetryRecord = await telemetryQuery
-            .OrderByDescending(tr => tr.Timestamp)
-            .Skip((pagination.PageNumber - 1) * pagination.PageSize)
-            .Take(pagination.PageSize)
-            .Select(telemetryRecord => new TelemetryRecordOutputDto
-            {
-                Id = telemetryRecord.Id,
-                VehicleId = telemetryRecord.VehicleId,
-                Timestamp = telemetryRecord.Timestamp,
-                Latitude = telemetryRecord.Latitude,
-                Longitude = telemetryRecord.Longitude,
-                Speed = telemetryRecord.Speed,
-                FuelLevel = telemetryRecord.FuelLevel,
-                FuelConsumptionRate = telemetryRecord.FuelConsumptionRate
-            })
-            .ToListAsync();
-
-        var result = new PaginatedResultDto<TelemetryRecordOutputDto>
-        {
-            TotalCount = totalRecords,
-            PageNumber = pagination.PageNumber,
-            PageSize = pagination.PageSize,
-            Data = telemetryRecord
-        };
-
-        return Ok(result);
+        return Ok(records);
     }
 
     // POST: api/TelemetryRecords
@@ -65,35 +40,13 @@ public class TelemetryRecordsController : ControllerBase
     public async Task<ActionResult> CreateTelemetryRecord([FromBody] TelemetryRecordInputDto telemetryRecord)
     {
 
-        var ValidVehicle = await _context.Vehicles
-            .AnyAsync(v => v.Status == VehicleStatus.Active && v.Id == telemetryRecord.VehicleId);
-        
-        var AssignedVehicle = await _context.VehicleAssignments
-            .AnyAsync(va => va.Status == AssignmentStatus.Active && va.VehicleId == telemetryRecord.VehicleId);
+        var result = await _service.CreateTelemetryRecordAsync(telemetryRecord);
 
-        if (!ValidVehicle)
+        if (!result.IsSuccess)
         {
-            return BadRequest("This vehicle does not exist or is inactive.");
+            return BadRequest(result.ErrorMessage.Substring(13));
         }
 
-        if (!AssignedVehicle)
-        {
-            return BadRequest("This vehicle does not have an active assignment.");
-        }
-
-        var newRecord = new TelemetryRecord
-        {
-            VehicleId = telemetryRecord.VehicleId,
-            Timestamp = DateTime.UtcNow,
-            Latitude = telemetryRecord.Latitude,
-            Longitude = telemetryRecord.Longitude,
-            Speed = telemetryRecord.Speed,
-            FuelLevel = telemetryRecord.FuelLevel,
-            FuelConsumptionRate = telemetryRecord.FuelConsumptionRate
-        };
-
-        _context.TelemetryRecords.Add(newRecord);
-        await _context.SaveChangesAsync();
         return NoContent();
     }
 }

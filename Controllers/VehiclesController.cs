@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using FleetTelemetryAPI.Services;
 
 namespace FleetTelemetryAPI.Controllers;
 [Route("api/[controller]")]
@@ -12,48 +13,20 @@ namespace FleetTelemetryAPI.Controllers;
 [Authorize(Roles = "Admin")]
 public class VehiclesController : ControllerBase
 {
-    private readonly FleetContext _context;
+    private readonly IVehicleService _service;
 
-    public VehiclesController(FleetContext context)
+    public VehiclesController(IVehicleService service)
     {
-        _context = context;
+        _service = service;
     }
 
     // GET: api/Vehicles
     [HttpGet]
     public async Task<ActionResult> GetAllVehicles([FromQuery] PaginationQueryDto pagination)
     {
-        var vehicleQuery = _context.Vehicles
-            .Where(v => v.Status == VehicleStatus.Active || v.Status == VehicleStatus.Maintenance);
-        var totalVehicles = await vehicleQuery.CountAsync();
+        var vehicles = await _service.GetAllVehiclesAsync(pagination);
+        return Ok(vehicles);
 
-        
-        
-        var vehicles = await vehicleQuery
-            .Skip((pagination.PageNumber -1) * pagination.PageSize)
-            .Take(pagination.PageSize)
-            .Select(vehicles => new VehicleOutputDto
-            {
-                Id = vehicles.Id,
-                RegistrationNumber = vehicles.RegistrationNumber,
-                Brand = vehicles.Brand,
-                Model = vehicles.Model,
-                Year = vehicles.Year,
-                LoadCapacity = vehicles.LoadCapacity,
-                Type = vehicles.Type,
-                Status = vehicles.Status
-            })
-            .ToListAsync();
-
-        var result = new PaginatedResultDto<VehicleOutputDto>
-        {
-            TotalCount = totalVehicles,
-            PageNumber = pagination.PageNumber,
-            PageSize = pagination.PageSize,
-            Data = vehicles
-        };
-
-        return Ok(result);
     }
 
 
@@ -61,20 +34,7 @@ public class VehiclesController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult> GetVehicleById([FromRoute] int id)
     {
-        var vehicle = await _context.Vehicles
-            .Where(v => v.Id == id)
-            .Select(vehicles => new VehicleOutputDto
-            {
-                Id = vehicles.Id,
-                RegistrationNumber = vehicles.RegistrationNumber,
-                Brand = vehicles.Brand,
-                Model = vehicles.Model,
-                Year = vehicles.Year,
-                LoadCapacity = vehicles.LoadCapacity,
-                Type = vehicles.Type,
-                Status = vehicles.Status
-            })
-            .FirstOrDefaultAsync();
+        var vehicle = await _service.GetVehicleByIdAsync(id);
 
         if (vehicle == null)
         {
@@ -88,68 +48,34 @@ public class VehiclesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult> CreateVehicle([FromBody] VehicleInputDto vehicle)
     {
-        var vehicleExists = await _context.Vehicles.AnyAsync(v => v.RegistrationNumber == vehicle.RegistrationNumber);
+        var result = await _service.CreateVehicleAsync(vehicle);
 
-        if (vehicleExists)
+        if(!result.IsSuccess)
         {
-            return Conflict("A vehicle with the same registration number already exists.");
+            return Conflict(result.ErrorMessage.Substring(10));
         }
 
-        var newVehicle = new Vehicle
-        {
-            RegistrationNumber = vehicle.RegistrationNumber,
-            Brand = vehicle.Brand,
-            Model = vehicle.Model,
-            Year = vehicle.Year,
-            LoadCapacity = vehicle.LoadCapacity,
-            Type = vehicle.Type,
-            Status = VehicleStatus.Active
-
-        };
-
-        _context.Vehicles.Add(newVehicle);
-        await _context.SaveChangesAsync();
-
-        var outputVehicle = new VehicleOutputDto
-        {
-            Id = newVehicle.Id,
-            RegistrationNumber = newVehicle.RegistrationNumber,
-            Brand = newVehicle.Brand,
-            Model = newVehicle.Model,
-            Year = newVehicle.Year,
-            LoadCapacity = newVehicle.LoadCapacity,
-            Type = newVehicle.Type,
-            Status = newVehicle.Status
-        };
-
-        return CreatedAtAction(nameof(GetVehicleById), new { id = newVehicle.Id }, outputVehicle);
+        return CreatedAtAction(nameof(GetVehicleById), new { id = result.Data!.Id }, result.Data);
     }
 
     // POST: api/Vehicles/5/status
     [HttpPost("{id}/status")]
     public async Task<ActionResult> UpdateVehicleStatus([FromRoute] int id)
     {
-        var vehicle = await _context.Vehicles.FindAsync(id);
+        var result = await _service.UpdateVehicleStatusAsync(id);
 
-        if (vehicle == null)
+        if (!result.IsSuccess)
         {
-            return NotFound();
+            if (result.ErrorMessage.StartsWith("NotFound"))
+            {
+                return NotFound();
+            }
+            else
+            {
+                return BadRequest(result.ErrorMessage.Substring(13));
+            }
         }
-
-        if (vehicle.Status == VehicleStatus.Active)
-        {
-            vehicle.Status = VehicleStatus.Maintenance;
-        }
-        else if (vehicle.Status == VehicleStatus.Maintenance)
-        {
-            vehicle.Status = VehicleStatus.Active;
-        }
-        else
-        {
-            return BadRequest("Vehicle status cannot be changed from Inactive.");
-        }
-
-        await _context.SaveChangesAsync();
+            
         return NoContent();
     }
 
@@ -157,29 +83,21 @@ public class VehiclesController : ControllerBase
     // PUT: api/Vehicles/5
     [HttpPut("{id}")]
     public async Task<ActionResult> UpdateVehicle([FromRoute] int id,[FromBody]  VehicleInputDto vehicle)
-    { 
-        var vehicleToUpdate = await _context.Vehicles.FindAsync(id);
+    {
+        var result = await _service.UpdateVehicleAsync(id, vehicle);
 
-        if (vehicleToUpdate == null)
+        if (!result.IsSuccess)
         {
-            return NotFound();
+            if (result.ErrorMessage.StartsWith("Not Found"))
+            {
+                return NotFound();
+            }
+            else
+            {
+                return Conflict(result.ErrorMessage.Substring(10));
+            }
         }
 
-        var vehicleDuplicated = await _context.Vehicles.AnyAsync(vtu => vtu.RegistrationNumber == vehicle.RegistrationNumber && vtu.Id != id);
-
-        if (vehicleDuplicated)
-        {
-            return Conflict("A vehicle with the same registration number already exists.");
-        }
-
-        vehicleToUpdate.RegistrationNumber = vehicle.RegistrationNumber;
-        vehicleToUpdate.Brand = vehicle.Brand;
-        vehicleToUpdate.Model = vehicle.Model;
-        vehicleToUpdate.Year = vehicle.Year;
-        vehicleToUpdate.LoadCapacity = vehicle.LoadCapacity;
-        vehicleToUpdate.Type = vehicle.Type;
-
-        await _context.SaveChangesAsync();
         return NoContent();
 
     }
@@ -188,15 +106,13 @@ public class VehiclesController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteVehicle([FromRoute] int id)
     {
-        var vehicleToDelete = await _context.Vehicles.FindAsync(id);
+        var result = await _service.DeleteVehicleAsync(id);
 
-        if (vehicleToDelete == null)
+        if (!result)
         {
             return NotFound();
         }
 
-        vehicleToDelete.Status = VehicleStatus.Inactive;
-        await _context.SaveChangesAsync();
         return NoContent();
     }
 }

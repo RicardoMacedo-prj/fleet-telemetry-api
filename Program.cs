@@ -43,6 +43,10 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddHostedService<OverdueAssignmentsWorker>();
+builder.Services.AddScoped<IDriverService, DriverService>();
+builder.Services.AddScoped<IVehicleService, VehicleService>();
+builder.Services.AddScoped<IVehicleAssignmentService, VehicleAssignmentService>();
+builder.Services.AddScoped<ITelemetryRecordService, TelemetryRecordService>();
 
 builder.Services.AddDbContext<FleetContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
