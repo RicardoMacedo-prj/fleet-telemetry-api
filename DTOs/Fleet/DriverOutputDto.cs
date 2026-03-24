@@ -1,6 +1,6 @@
-﻿using FleetTelemetryAPI.Models;
+﻿using FleetTelemetryAPI.Models.Fleet;
 
-namespace FleetTelemetryAPI.DTOs;
+namespace FleetTelemetryAPI.DTOs.Fleet;
 
 public class DriverOutputDto
 {

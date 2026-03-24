@@ -1,6 +1,7 @@
 ﻿using FleetTelemetryAPI.Data;
 using FleetTelemetryAPI.DTOs;
-using FleetTelemetryAPI.Models;
+using FleetTelemetryAPI.DTOs.Fleet;
+using FleetTelemetryAPI.Models.Fleet;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 

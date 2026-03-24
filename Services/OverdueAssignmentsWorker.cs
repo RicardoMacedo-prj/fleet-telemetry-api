@@ -1,5 +1,5 @@
 ﻿using FleetTelemetryAPI.Data;
-using FleetTelemetryAPI.Models;
+using FleetTelemetryAPI.Models.Fleet;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 

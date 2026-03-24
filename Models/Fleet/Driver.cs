@@ -1,4 +1,4 @@
-﻿namespace FleetTelemetryAPI.Models;
+﻿namespace FleetTelemetryAPI.Models.Fleet;
 
 public class Driver
 {

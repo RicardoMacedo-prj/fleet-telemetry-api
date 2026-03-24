@@ -1,4 +1,5 @@
 ﻿using FleetTelemetryAPI.DTOs;
+using FleetTelemetryAPI.DTOs.Fleet;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FleetTelemetryAPI.Services;

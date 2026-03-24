@@ -1,4 +1,4 @@
-﻿namespace FleetTelemetryAPI.DTOs;
+﻿namespace FleetTelemetryAPI.DTOs.Telemetry;
 
 public class TelemetryRecordOutputDto
 {

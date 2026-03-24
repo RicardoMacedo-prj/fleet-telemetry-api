@@ -1,4 +1,5 @@
-﻿using FleetTelemetryAPI.Models;
+﻿using FleetTelemetryAPI.Models.Fleet;
+using FleetTelemetryAPI.Models.Telemetry;
 using Microsoft.EntityFrameworkCore;
 
 namespace FleetTelemetryAPI.Data;

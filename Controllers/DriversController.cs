@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using FleetTelemetryAPI.Services;
+using FleetTelemetryAPI.DTOs.Fleet;
 
 namespace FleetTelemetryAPI.Controllers;
 [Route("api/[controller]")]

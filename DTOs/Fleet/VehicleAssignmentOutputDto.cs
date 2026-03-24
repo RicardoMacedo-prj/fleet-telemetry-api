@@ -1,6 +1,6 @@
 ﻿using FleetTelemetryAPI.Models;
 
-namespace FleetTelemetryAPI.DTOs;
+namespace FleetTelemetryAPI.DTOs.Fleet;
 
 public class VehicleAssignmentOutputDto
 {

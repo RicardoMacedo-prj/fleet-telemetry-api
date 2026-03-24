@@ -1,4 +1,6 @@
-﻿namespace FleetTelemetryAPI.Models;
+﻿using FleetTelemetryAPI.Models.Telemetry;
+
+namespace FleetTelemetryAPI.Models.Fleet;
 
 public class Vehicle
 {

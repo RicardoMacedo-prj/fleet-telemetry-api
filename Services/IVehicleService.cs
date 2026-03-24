@@ -1,4 +1,5 @@
 ﻿using FleetTelemetryAPI.DTOs;
+using FleetTelemetryAPI.DTOs.Fleet;
 
 namespace FleetTelemetryAPI.Services;
 

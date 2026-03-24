@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace FleetTelemetryAPI.DTOs;
+namespace FleetTelemetryAPI.DTOs.Telemetry;
 
 public class TelemetryRecordInputDto
 {

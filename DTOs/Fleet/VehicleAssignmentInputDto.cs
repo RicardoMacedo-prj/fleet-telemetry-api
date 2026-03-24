@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace FleetTelemetryAPI.DTOs;
+namespace FleetTelemetryAPI.DTOs.Fleet;
 
 public class VehicleAssignmentInputDto
 {
