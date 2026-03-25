@@ -1,11 +1,12 @@
-﻿using FleetTelemetryAPI.Data;
+﻿using System.Text;
+using FleetTelemetryAPI.Data;
+using FleetTelemetryAPI.Data.Seeders;
 using FleetTelemetryAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Scalar.AspNetCore;
-using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,6 +51,9 @@ builder.Services.AddScoped<ITelemetryRecordService, TelemetryRecordService>();
 
 builder.Services.AddDbContext<FleetContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContext<AuthContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
+    sqlOptions => sqlOptions.MigrationsHistoryTable("__AuthMigrationsHistory", "auth")));
 
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -70,7 +74,8 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!)),
+        ClockSkew = TimeSpan.Zero
     };
 });
 
@@ -94,5 +99,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+AuthDbSeeder.SeedAdminUser(app.Services);
+
 app.Run();
 
