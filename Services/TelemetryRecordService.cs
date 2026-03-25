@@ -50,7 +50,8 @@ public class TelemetryRecordService: ITelemetryRecordService
     public async Task<(bool IsSuccess, string ErrorMessage)> CreateTelemetryRecordAsync(TelemetryRecordInputDto telemetryRecord)
     {
         var hasActiveAssignment = await _context.VehicleAssignments
-        .AnyAsync(va => va.VehicleId == telemetryRecord.VehicleId && va.Status == AssignmentStatus.Active);
+        .AnyAsync(va => va.VehicleId == telemetryRecord.VehicleId
+                && (va.Status == AssignmentStatus.Active || va.Status == AssignmentStatus.Overdue));
 
         if (!hasActiveAssignment)
         {
