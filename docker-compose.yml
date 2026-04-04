@@ -1,0 +1,24 @@
+﻿services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=Engine3r_P@ssw0rd!
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql_data:/var/opt/mssql
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=db;Database=FleetTelemetryDB;User Id=sa;Password=Engine3r_P@ssw0rd!;TrustServerCertificate=True;
+    depends_on:
+      - db
+
+volumes:
+  sql_data:

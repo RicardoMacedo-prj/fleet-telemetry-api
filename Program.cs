@@ -100,7 +100,27 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-AuthDbSeeder.SeedAdminUser(app.Services);
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+
+    try
+    {
+        var authContext = services.GetRequiredService<AuthContext>();
+        authContext.Database.Migrate();
+
+        var fleetContext = services.GetRequiredService<FleetContext>();
+        fleetContext.Database.Migrate();
+
+        AuthDbSeeder.SeedAdminUser(services);
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while seeding the database.");
+        throw;
+    }
+}
 
 app.Run();
 
