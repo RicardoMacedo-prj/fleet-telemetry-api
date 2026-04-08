@@ -1,10 +1,12 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using FleetTelemetryAPI.Common;
 using FleetTelemetryAPI.Data;
 using FleetTelemetryAPI.DTOs;
 using FleetTelemetryAPI.DTOs.Identity;
 using FleetTelemetryAPI.Models.Identity;
+using FleetTelemetryAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -14,76 +16,40 @@ using Microsoft.IdentityModel.Tokens;
 namespace FleetTelemetryAPI.Controllers;
 [Route("api/[controller]")]
 [ApiController]
-public class AuthController : ControllerBase
+public class AuthController : ApiControllerBase
 {
-    private readonly AuthContext _context;
-    private readonly IConfiguration _configuration;
+    private readonly IAuthService _service;
 
-    public AuthController(AuthContext context, IConfiguration configuration)
+    public AuthController(IAuthService service)
     {
-        _context = context;
-        _configuration = configuration;
+        _service = service;
     }
 
     [Authorize(Roles = "Admin")]
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterDto register)
     {
-        if (await _context.Employees.AnyAsync(e => e.Username == register.Username))
+        var result = await _service.RegisterAsync(register);
+
+        if (!result.IsSuccess)
         {
-            return BadRequest("Username already exists.");
+            return HandleFailure(result);
         }
 
-        string passwordHash = BCrypt.Net.BCrypt.HashPassword(register.Password);
-
-        var employee = new Employee
-        {
-            Username = register.Username,
-            Email = register.Email,
-            PasswordHash = passwordHash,
-            Role = register.Role
-        };
-
-        _context.Employees.Add(employee);
-        await _context.SaveChangesAsync();
-        return Ok("User registered successfully.");
+        return NoContent();
     }
 
     [AllowAnonymous]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto login)
     {
-        var employee = await _context.Employees.FirstOrDefaultAsync(e => e.Username == login.Username);
+        var result = await _service.LoginAsync(login);
 
-        if (employee == null || !BCrypt.Net.BCrypt.Verify(login.Password, employee.PasswordHash)) {
-            return Unauthorized("Invalid Credentials.");
+        if (!result.IsSuccess)
+        {
+            return HandleFailure(result);
         }
 
-        if (!employee.IsActive)
-        {
-            return Unauthorized("This account is disabled.");
-        }
-
-        var claims = new[]
-        {
-            new Claim(ClaimTypes.Name, login.Username),
-            new Claim(ClaimTypes.Role, employee.Role.ToString())
-        };
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:Key"]!));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var token = new JwtSecurityToken(
-            issuer: _configuration["JwtSettings:Issuer"],
-            audience: _configuration["JwtSettings:Audience"],
-            claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(double.Parse(_configuration["JwtSettings:DurationInMinutes"]!)),
-            signingCredentials: creds
-        );
-
-        return Ok(new
-        {
-            token = new JwtSecurityTokenHandler().WriteToken(token)
-        });
+        return Ok(result.Data);
     }
 }

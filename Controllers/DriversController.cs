@@ -8,12 +8,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using FleetTelemetryAPI.Services;
 using FleetTelemetryAPI.DTOs.Fleet;
+using FleetTelemetryAPI.Common;
 
 namespace FleetTelemetryAPI.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Authorize(Roles = "Admin")]
-public class DriversController : ControllerBase
+public class DriversController : ApiControllerBase
 {
     private readonly IDriverService _service;
 
@@ -34,14 +35,14 @@ public class DriversController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult> GetDriverById([FromRoute] int id)
     {
-        var driver = await _service.GetDriverByIdAsync(id);
+        var result = await _service.GetDriverByIdAsync(id);
 
-        if (driver == null)
+        if (!result.IsSuccess)
         {
-            return NotFound();
+            return HandleFailure(result);
         }
 
-        return Ok(driver);
+        return Ok(result.Data);
     }
 
     // POST: api/Drivers
@@ -52,7 +53,7 @@ public class DriversController : ControllerBase
 
         if (!result.IsSuccess)
         {
-            return Conflict(result.ErrorMessage.Substring(10));
+            return HandleFailure(result);
         }
 
         return CreatedAtAction(nameof(GetDriverById), new { id = result.Data!.Id }, result.Data);
@@ -66,15 +67,10 @@ public class DriversController : ControllerBase
 
         if (!result.IsSuccess)
         {
-            if (result.ErrorMessage.StartsWith("Not Found"))
-            {
-                return NotFound();
-            }
-
-            return Conflict(result.ErrorMessage.Substring(10));
+            return HandleFailure(result);
         }
 
-        return NoContent();
+        return NoContent(); 
     }
 
     // DELETE: api/Drivers/5
@@ -83,12 +79,11 @@ public class DriversController : ControllerBase
     {
         var result =await _service.DeleteDriverAsync(id);
 
-        if (!result)
+        if (!result.IsSuccess)
         {
-            return NotFound();
+            return HandleFailure(result);
         }
 
         return NoContent();
-        
     }
 }

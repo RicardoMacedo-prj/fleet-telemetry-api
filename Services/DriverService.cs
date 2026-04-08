@@ -1,4 +1,5 @@
-﻿using FleetTelemetryAPI.Data;
+﻿using FleetTelemetryAPI.Common;
+using FleetTelemetryAPI.Data;
 using FleetTelemetryAPI.DTOs;
 using FleetTelemetryAPI.DTOs.Fleet;
 using FleetTelemetryAPI.Models.Fleet;
@@ -42,9 +43,9 @@ public class DriverService : IDriverService
         };
     }
 
-    public async Task<DriverOutputDto?> GetDriverByIdAsync(int id)
+    public async Task<Result<DriverOutputDto>> GetDriverByIdAsync(int id)
     {
-        return await _context.Drivers
+        var driver = await _context.Drivers
             .Where(d => d.Id == id)
             .Select(drivers => new DriverOutputDto
             {
@@ -55,15 +56,22 @@ public class DriverService : IDriverService
                 IsActive = drivers.IsActive
             })
             .FirstOrDefaultAsync();
+
+        if (driver == null)
+        {
+            return Result<DriverOutputDto>.Failure(ErrorType.NotFound, "Driver not found");
+        }
+
+        return Result<DriverOutputDto>.Success(driver);
     }
 
-    public async Task<(bool IsSuccess, string ErrorMessage, DriverOutputDto? Data)> CreateDriverAsync(DriverInputDto driver)
+    public async Task<Result<DriverOutputDto>> CreateDriverAsync(DriverInputDto driver)
     {
         var driverExists = await _context.Drivers.AnyAsync(d => d.LicenseNumber == driver.LicenseNumber);
 
         if (driverExists)
         {
-            return (false, "Conflict: A driver with the same license number already exists.", null);
+            return Result<DriverOutputDto>.Failure(ErrorType.Conflict, "A driver with the same license number already exists.");
         }
 
         var newDriver = new Driver
@@ -85,23 +93,23 @@ public class DriverService : IDriverService
             IsActive = newDriver.IsActive
         };
 
-        return (true, string.Empty, outputDriver);
+        return Result<DriverOutputDto>.Success(outputDriver);
     }
 
-    public async Task<(bool IsSuccess, string ErrorMessage)> UpdateDriverAsync(int id, DriverInputDto driver)
+    public async Task<Result> UpdateDriverAsync(int id, DriverInputDto driver)
     {
         var driverToUpdate = await _context.Drivers.FindAsync(id);
 
         if (driverToUpdate == null)
         {
-            return (false, "Not Found");
+            return Result.Failure(ErrorType.NotFound, "Driver not found");
         }
 
         var driverDuplicated = await _context.Drivers.AnyAsync(d => d.LicenseNumber == driver.LicenseNumber && d.Id != id);
 
         if (driverDuplicated)
         {
-            return (false, "Conflict: A driver with the same license number already exists.");
+            return Result.Failure(ErrorType.Conflict, "A driver with the same license number already exists.");
         }
 
         driverToUpdate.Name = driver.Name;
@@ -109,21 +117,21 @@ public class DriverService : IDriverService
         driverToUpdate.LicenseCategory = driver.LicenseCategory;
 
         await _context.SaveChangesAsync();
-        return (true, string.Empty);
+        return Result.Success();
     }
 
-    public async Task<bool> DeleteDriverAsync(int id)
+    public async Task<Result> DeleteDriverAsync(int id)
     {
         var driver = await _context.Drivers.FindAsync(id);
 
         if (driver == null)
         {
-            return false;
+            return Result.Failure(ErrorType.NotFound, "Driver not found");
         }
 
         driver.IsActive = false;
         await _context.SaveChangesAsync();
-        return true;
+        return Result.Success();
     }
 
 

@@ -1,4 +1,5 @@
-﻿using FleetTelemetryAPI.DTOs;
+﻿using FleetTelemetryAPI.Common;
+using FleetTelemetryAPI.DTOs;
 using FleetTelemetryAPI.DTOs.Fleet;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,11 +9,11 @@ public interface IDriverService
 {
     Task<PaginatedResultDto<DriverOutputDto>> GetAllDriversAsync(PaginationQueryDto pagination);
 
-    Task<DriverOutputDto?> GetDriverByIdAsync(int id);
+    Task<Result<DriverOutputDto>> GetDriverByIdAsync(int id);
 
-    Task<(bool IsSuccess, string ErrorMessage, DriverOutputDto? Data)> CreateDriverAsync(DriverInputDto driver);
+    Task<Result<DriverOutputDto>> CreateDriverAsync(DriverInputDto driver);
 
-    Task<(bool IsSuccess, string ErrorMessage)> UpdateDriverAsync(int id, DriverInputDto driver);
+    Task<Result> UpdateDriverAsync(int id, DriverInputDto driver);
 
-    Task<bool> DeleteDriverAsync(int id);
+    Task<Result> DeleteDriverAsync(int id);
 }

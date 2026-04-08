@@ -7,12 +7,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using FleetTelemetryAPI.Services;
 using FleetTelemetryAPI.DTOs.Fleet;
+using FleetTelemetryAPI.Common;
 
 namespace FleetTelemetryAPI.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Authorize(Roles = "Admin")]
-public class VehicleAssignmentsController : ControllerBase
+public class VehicleAssignmentsController : ApiControllerBase
 {
     private readonly IVehicleAssignmentService _service;
 
@@ -33,14 +34,14 @@ public class VehicleAssignmentsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult> GetVehicleAssignmentById([FromRoute] int id)
     {
-        var vehicleAssignment = await _service.GetVehicleAssignmentByIdAsync(id);
+        var result = await _service.GetVehicleAssignmentByIdAsync(id);
 
-        if (vehicleAssignment == null)
+        if (!result.IsSuccess)
         {
-            return NotFound();
+            return HandleFailure(result);
         }
 
-        return Ok(vehicleAssignment);
+        return Ok(result.Data);
     }
 
     // POST: api/VehicleAssignments
@@ -51,12 +52,7 @@ public class VehicleAssignmentsController : ControllerBase
 
         if (!result.IsSuccess)
         {
-            if (result.ErrorMessage.StartsWith("Bad Request"))
-            {
-                return BadRequest(result.ErrorMessage.Substring(13));
-            }
-
-            return Conflict(result.ErrorMessage.Substring(10));
+            return HandleFailure(result);
         }
 
         return CreatedAtAction(nameof(GetVehicleAssignmentById), new { id = result.Data!.Id }, result.Data);
@@ -70,17 +66,7 @@ public class VehicleAssignmentsController : ControllerBase
 
         if (!result.IsSuccess)
         {
-            if (result.ErrorMessage.StartsWith("Not Found"))
-            {
-                return NotFound();
-            }
-
-            if (result.ErrorMessage.StartsWith("Bad Request"))
-            {
-                return BadRequest(result.ErrorMessage.Substring(13));
-            }
-            
-            return Conflict(result.ErrorMessage.Substring(10));
+            return HandleFailure(result);
         }
 
         return NoContent();
@@ -94,12 +80,7 @@ public class VehicleAssignmentsController : ControllerBase
 
         if (!result.IsSuccess)
         {
-            if (result.ErrorMessage.StartsWith("Not Found"))
-            {
-                return NotFound();
-            }
-
-            return BadRequest(result.ErrorMessage.Substring(13));
+            return HandleFailure(result);
         }
 
         return NoContent();

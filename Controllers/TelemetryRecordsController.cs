@@ -7,12 +7,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using FleetTelemetryAPI.Services;
 using FleetTelemetryAPI.DTOs.Telemetry;
+using FleetTelemetryAPI.Common;
 
 namespace FleetTelemetryAPI.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Authorize(Roles = "Admin")]
-public class TelemetryRecordsController : ControllerBase
+public class TelemetryRecordsController : ApiControllerBase
 {
     private readonly ITelemetryRecordService _service;
 
@@ -27,12 +28,6 @@ public class TelemetryRecordsController : ControllerBase
     public async Task<ActionResult> GetTelemetryRecordById([FromRoute] int vehicleId, [FromQuery] PaginationQueryDto pagination)
     {
         var records = await _service.GetTelemetryRecordByIdAsync(vehicleId, pagination);
-
-        if (records.TotalCount == 0)
-        {
-            return NotFound();
-        } 
-
         return Ok(records);
     }
 
@@ -45,7 +40,7 @@ public class TelemetryRecordsController : ControllerBase
 
         if (!result.IsSuccess)
         {
-            return BadRequest(result.ErrorMessage.Substring(13));
+            return HandleFailure(result);
         }
 
         return NoContent();

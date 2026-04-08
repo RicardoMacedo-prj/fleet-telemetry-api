@@ -24,24 +24,14 @@ public class OverdueAssignmentsWorker : BackgroundService
             {
                 var context = scope.ServiceProvider.GetRequiredService<FleetContext>();
 
-                var overdueAssignments = await context.VehicleAssignments
+                await context.VehicleAssignments
                     .Where(va => va.ReturnDate == null 
                         && va.ExpectedReturnDate < DateTime.UtcNow 
                         && va.Status == AssignmentStatus.Active)
-                    .ToListAsync(stoppingToken);
-
-                if (overdueAssignments.Any())
-                {
-                    foreach (var assignment in overdueAssignments)
-                    {
-                        assignment.Status = AssignmentStatus.Overdue;
-                    }
-
-                    await context.SaveChangesAsync(stoppingToken);
-                }
+                    .ExecuteUpdateAsync(s => s.SetProperty(va => va.Status, AssignmentStatus.Overdue), stoppingToken);
             }
 
-            await Task.Delay(5000, stoppingToken);
+            await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
         }
     }
     

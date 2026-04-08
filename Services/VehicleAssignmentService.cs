@@ -1,4 +1,5 @@
-﻿using FleetTelemetryAPI.Data;
+﻿using FleetTelemetryAPI.Common;
+using FleetTelemetryAPI.Data;
 using FleetTelemetryAPI.DTOs;
 using FleetTelemetryAPI.DTOs.Fleet;
 using FleetTelemetryAPI.Models.Fleet;
@@ -27,9 +28,9 @@ public class VehicleAssignmentService: IVehicleAssignmentService
             {
                 Id = vehicleAssignments.Id,
                 DriverId = vehicleAssignments.DriverId,
-                DriverName = vehicleAssignments.Driver.Name,
+                DriverName = vehicleAssignments.Driver!.Name,
                 VehicleId = vehicleAssignments.VehicleId,
-                VehicleRegistrationNumber = vehicleAssignments.Vehicle.RegistrationNumber,
+                VehicleRegistrationNumber = vehicleAssignments.Vehicle!.RegistrationNumber,
                 AssignmentDate = vehicleAssignments.AssignmentDate,
                 ReturnDate = vehicleAssignments.ReturnDate,
                 Status = vehicleAssignments.Status.ToString()
@@ -46,31 +47,38 @@ public class VehicleAssignmentService: IVehicleAssignmentService
         
     }
 
-    public async Task<VehicleAssignmentOutputDto?> GetVehicleAssignmentByIdAsync(int id)
+    public async Task<Result<VehicleAssignmentOutputDto>> GetVehicleAssignmentByIdAsync(int id)
     {
-        return await _context.VehicleAssignments
+        var assignment = await _context.VehicleAssignments
             .Where(va => va.Id == id)
             .Select(vehicleAssignment => new VehicleAssignmentOutputDto
             {
                 Id = vehicleAssignment.Id,
                 DriverId = vehicleAssignment.DriverId,
-                DriverName = vehicleAssignment.Driver.Name,
+                DriverName = vehicleAssignment.Driver!.Name,
                 VehicleId = vehicleAssignment.VehicleId,
-                VehicleRegistrationNumber = vehicleAssignment.Vehicle.RegistrationNumber,
+                VehicleRegistrationNumber = vehicleAssignment.Vehicle!.RegistrationNumber,
                 AssignmentDate = vehicleAssignment.AssignmentDate,
                 ReturnDate = vehicleAssignment.ReturnDate,
                 Status = vehicleAssignment.Status.ToString()
             })
             .FirstOrDefaultAsync();
+
+        if (assignment == null)
+        {
+            return Result<VehicleAssignmentOutputDto>.Failure(ErrorType.NotFound, "Assignment not found.");
+        }
+
+        return Result<VehicleAssignmentOutputDto>.Success(assignment);
     }
 
-    public async Task<(bool IsSuccess, string ErrorMessage, VehicleAssignmentOutputDto? Data)> CreateVehicleAssignmentAsync(VehicleAssignmentInputDto vehicleAssignment)
+    public async Task<Result<VehicleAssignmentOutputDto>> CreateVehicleAssignmentAsync(VehicleAssignmentInputDto vehicleAssignment)
     {
         DateTime AssignmentDate = DateTime.UtcNow;
 
         if (vehicleAssignment.ExpectedReturnDate != null && vehicleAssignment.ExpectedReturnDate < AssignmentDate)
         {
-            return (false, "Bad Request: Invalid expected return date.", null);
+            return Result<VehicleAssignmentOutputDto>.Failure(ErrorType.Validation, "Invalid expected return date.");
         }
 
         var driver = await _context.Drivers.FindAsync(vehicleAssignment.DriverId);
@@ -78,23 +86,23 @@ public class VehicleAssignmentService: IVehicleAssignmentService
 
         if (driver == null || vehicle == null)
         {
-            return (false, "Bad Request: Driver or Vehicle does not exist.", null);
+            return Result<VehicleAssignmentOutputDto>.Failure(ErrorType.Validation, "Driver or Vehicle does not exist.");
         }
 
         if (!driver.IsActive)
         {
-            return (false, "Bad Request: Cannot assign an inactive driver.", null);
+            return Result<VehicleAssignmentOutputDto>.Failure(ErrorType.Validation, "Cannot assign an inactive driver.");
         }
 
         if (vehicle.Status != VehicleStatus.Active)
         {
-            return (false, $"Bad Request: Cannot assign vehicle. Current status is {vehicle.Status}.", null);
+            return Result<VehicleAssignmentOutputDto>.Failure(ErrorType.Validation, $"Cannot assign vehicle. Current status is {vehicle.Status}.");
         }
 
         if ((int)driver.LicenseCategory != (int)vehicle.Type)
         {
 
-            return (false, "Bad Request: Driver's license category does not match vehicle type.", null);
+            return Result<VehicleAssignmentOutputDto>.Failure(ErrorType.Validation, "Driver's license category does not match vehicle type.");
         }
 
         var driverAlreadyAssigned = await _context.VehicleAssignments
@@ -105,11 +113,11 @@ public class VehicleAssignmentService: IVehicleAssignmentService
 
         if (driverAlreadyAssigned)
         {
-            return (false, "Conflict: Driver is already assigned to another vehicle.", null);
+            return Result<VehicleAssignmentOutputDto>.Failure(ErrorType.Conflict, "Driver is already assigned to another vehicle.");
         }
         if (vehicleAlreadyAssigned)
         {
-            return (false, "Conflict: Vehicle is already assigned to another driver.", null);
+            return Result<VehicleAssignmentOutputDto>.Failure(ErrorType.Conflict, "Vehicle is already assigned to another driver.");
         }
 
         var newAssignment = new VehicleAssignment
@@ -136,22 +144,22 @@ public class VehicleAssignmentService: IVehicleAssignmentService
 
         };
 
-        return (true, string.Empty, outputVehicleAssignment);
+        return Result<VehicleAssignmentOutputDto>.Success(outputVehicleAssignment);
     }
 
-    public async Task<(bool IsSuccess, string ErrorMessage)> UpdateVehicleAssignmentAsync(int id, VehicleAssignmentInputDto vehicleAssignment)
+    public async Task<Result> UpdateVehicleAssignmentAsync(int id, VehicleAssignmentInputDto vehicleAssignment)
     {
         var AssignmentToUpdate = await _context.VehicleAssignments.FindAsync(id);
 
         if (AssignmentToUpdate == null)
         {
-            return (false, "Not Found");
+            return Result.Failure(ErrorType.NotFound, "Assignment not found.");
         }
 
         if (vehicleAssignment.ExpectedReturnDate != null &&
             vehicleAssignment.ExpectedReturnDate < AssignmentToUpdate.AssignmentDate)
         {
-            return (false, "Bad Request: Invalid expected return date.");
+            return Result.Failure(ErrorType.Validation, "Invalid expected return date.");
         }
 
         var driver = await _context.Drivers.FindAsync(vehicleAssignment.DriverId);
@@ -159,23 +167,23 @@ public class VehicleAssignmentService: IVehicleAssignmentService
 
         if (driver == null || vehicle == null)
         {
-            return (false, "Bad Request: Driver or Vehicle does not exist.");
+            return Result.Failure(ErrorType.Validation, "Driver or Vehicle does not exist.");
         }
 
         if (!driver.IsActive)
         {
-            return (false, "Bad Request: Cannot assign an inactive driver.");
+            return Result.Failure(ErrorType.Validation, "Cannot assign an inactive driver.");
         }
 
         if (vehicle.Status != VehicleStatus.Active)
         {
-            return (false, $"Bad Request: Cannot assign vehicle. Current status is {vehicle.Status}.");
+            return Result.Failure(ErrorType.Validation, $"Bad Request: Cannot assign vehicle. Current status is {vehicle.Status}.");
         }
 
         if ((int)driver.LicenseCategory != (int)vehicle.Type)
         {
 
-            return (false, "Bad Request: Driver's license category does not match vehicle type.");
+            return Result.Failure(ErrorType.Validation, "Driver's license category does not match vehicle type.");
         }
 
         var driverAlreadyAssigned = await _context.VehicleAssignments
@@ -186,11 +194,11 @@ public class VehicleAssignmentService: IVehicleAssignmentService
 
         if (driverAlreadyAssigned)
         {
-            return (false, "Conflict: Driver is already assigned to another vehicle.");
+            return Result.Failure(ErrorType.Conflict, "Driver is already assigned to another vehicle.");
         }
         if (vehicleAlreadyAssigned)
         {
-            return (false, "Conflict: Vehicle is already assigned to another driver.");
+            return Result.Failure(ErrorType.Conflict, "Vehicle is already assigned to another driver.");
         }
 
         AssignmentToUpdate.DriverId = vehicleAssignment.DriverId;
@@ -198,27 +206,27 @@ public class VehicleAssignmentService: IVehicleAssignmentService
         AssignmentToUpdate.ExpectedReturnDate = vehicleAssignment.ExpectedReturnDate;
 
         await _context.SaveChangesAsync();
-        return (true, string.Empty);
+        return Result.Success();
     }
 
-    public async Task<(bool IsSuccess, string ErrorMessage)> ReturnVehicle(int id)
+    public async Task<Result> ReturnVehicle(int id)
     {
         var assignment = await _context.VehicleAssignments.FindAsync(id);
 
         if (assignment == null)
         {
-            return (false, "Not Found");
+            return Result.Failure(ErrorType.NotFound, "Assignment not found.");
         }
 
         if (assignment.Status == AssignmentStatus.Completed)
         {
-            return (false, "Conflict: Assignment is already Completed.");
+            return Result.Failure(ErrorType.Conflict, "Assignment is already Completed.");
         }
 
         assignment.ReturnDate = DateTime.UtcNow;
         assignment.Status = AssignmentStatus.Completed;
 
         await _context.SaveChangesAsync();
-        return (true, string.Empty);
+        return Result.Success();
     }
 }

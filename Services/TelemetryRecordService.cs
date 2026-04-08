@@ -4,6 +4,7 @@ using FleetTelemetryAPI.DTOs.Telemetry;
 using FleetTelemetryAPI.Models.Telemetry;
 using FleetTelemetryAPI.Models.Fleet;
 using Microsoft.EntityFrameworkCore;
+using FleetTelemetryAPI.Common;
 
 namespace FleetTelemetryAPI.Services;
 
@@ -16,10 +17,10 @@ public class TelemetryRecordService: ITelemetryRecordService
         _context = context;
     }
 
-    public async Task<PaginatedResultDto<TelemetryRecordOutputDto>> GetTelemetryRecordByIdAsync(int vehicleId, PaginationQueryDto pagination)
+    public async Task<PaginatedResultDto<TelemetryRecordOutputDto>> GetTelemetryRecordByIdAsync(int vehicleId, PaginationQueryDto pagination, CancellationToken cancellationToken)
     {
         var telemetryQuery = _context.TelemetryRecords.Where(tr => tr.VehicleId == vehicleId);
-        var totalRecords = await telemetryQuery.CountAsync();
+        var totalRecords = await telemetryQuery.CountAsync(cancellationToken);
 
         var telemetryRecord = await telemetryQuery
             .OrderByDescending(tr => tr.Timestamp)
@@ -36,7 +37,7 @@ public class TelemetryRecordService: ITelemetryRecordService
                 FuelLevel = telemetryRecord.FuelLevel,
                 FuelConsumptionRate = telemetryRecord.FuelConsumptionRate
             })
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return new PaginatedResultDto<TelemetryRecordOutputDto>
         {
@@ -47,7 +48,7 @@ public class TelemetryRecordService: ITelemetryRecordService
         };
     }
 
-    public async Task<(bool IsSuccess, string ErrorMessage)> CreateTelemetryRecordAsync(TelemetryRecordInputDto telemetryRecord)
+    public async Task<Result> CreateTelemetryRecordAsync(TelemetryRecordInputDto telemetryRecord)
     {
         var hasActiveAssignment = await _context.VehicleAssignments
         .AnyAsync(va => va.VehicleId == telemetryRecord.VehicleId
@@ -55,7 +56,7 @@ public class TelemetryRecordService: ITelemetryRecordService
 
         if (!hasActiveAssignment)
         {
-            return (false, "Bad Request: Cannot accept telemetry. Vehicle has no active assignment or is inactive.");
+            return Result.Failure(ErrorType.Validation, "Cannot accept telemetry. Vehicle has no active assignment or is inactive.");
         }
 
         var newRecord = new TelemetryRecord
@@ -72,6 +73,6 @@ public class TelemetryRecordService: ITelemetryRecordService
         _context.TelemetryRecords.Add(newRecord);
         await _context.SaveChangesAsync();
 
-        return (true, string.Empty);
+        return Result.Success();
     }
 }

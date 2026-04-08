@@ -1,4 +1,5 @@
-﻿using FleetTelemetryAPI.DTOs;
+﻿using FleetTelemetryAPI.Common;
+using FleetTelemetryAPI.DTOs;
 using FleetTelemetryAPI.DTOs.Fleet;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,13 +9,13 @@ public interface IVehicleAssignmentService
 {
     Task<PaginatedResultDto<VehicleAssignmentOutputDto>> GetAllVehicleAssignmentsAsync(PaginationQueryDto pagination);
 
-    Task<VehicleAssignmentOutputDto?> GetVehicleAssignmentByIdAsync(int id);
+    Task<Result<VehicleAssignmentOutputDto>> GetVehicleAssignmentByIdAsync(int id);
 
-    Task<(bool IsSuccess, string ErrorMessage, VehicleAssignmentOutputDto? Data)> CreateVehicleAssignmentAsync(VehicleAssignmentInputDto vehicleAssignment);
+    Task<Result<VehicleAssignmentOutputDto>> CreateVehicleAssignmentAsync(VehicleAssignmentInputDto vehicleAssignment);
 
-    Task<(bool IsSuccess, string ErrorMessage)> UpdateVehicleAssignmentAsync(int id, VehicleAssignmentInputDto vehicleAssignment);
+    Task<Result> UpdateVehicleAssignmentAsync(int id, VehicleAssignmentInputDto vehicleAssignment);
 
-    Task<(bool IsSuccess, string ErrorMessage)> ReturnVehicle(int id);
+    Task<Result> ReturnVehicle(int id);
 
 
 }

@@ -1,4 +1,5 @@
-﻿using FleetTelemetryAPI.Data;
+﻿using FleetTelemetryAPI.Common;
+using FleetTelemetryAPI.Data;
 using FleetTelemetryAPI.DTOs;
 using FleetTelemetryAPI.DTOs.Fleet;
 using FleetTelemetryAPI.Models.Fleet;
@@ -49,9 +50,9 @@ public class VehicleService : IVehicleService
         };
     }
 
-    public async Task<VehicleOutputDto?> GetVehicleByIdAsync(int id)
+    public async Task<Result<VehicleOutputDto>> GetVehicleByIdAsync(int id)
     {
-        return await _context.Vehicles
+        var vehicle = await _context.Vehicles
             .Where(v => v.Id == id)
             .Select(vehicles => new VehicleOutputDto
             {
@@ -65,15 +66,22 @@ public class VehicleService : IVehicleService
                 Status = vehicles.Status
             })
             .FirstOrDefaultAsync();
+
+        if (vehicle == null)
+        {
+            return Result<VehicleOutputDto>.Failure(ErrorType.NotFound, "Vehicle not found.");
+        }
+
+        return Result<VehicleOutputDto>.Success(vehicle);
     }
 
-    public async Task<(bool IsSuccess, string ErrorMessage, VehicleOutputDto? Data)> CreateVehicleAsync(VehicleInputDto vehicle)
+    public async Task<Result<VehicleOutputDto>> CreateVehicleAsync(VehicleInputDto vehicle)
     {
         var vehicleExists = await _context.Vehicles.AnyAsync(v => v.RegistrationNumber == vehicle.RegistrationNumber);
 
         if (vehicleExists)
         {
-            return (false, "Conflict: A vehicle with the same registration number already exists.", null);
+            return Result<VehicleOutputDto>.Failure(ErrorType.Conflict, "A vehicle with the same registration number already exists.");
         }
 
         var newVehicle = new Vehicle
@@ -103,23 +111,23 @@ public class VehicleService : IVehicleService
             Status = newVehicle.Status
         };
 
-        return (true, string.Empty, outputVehicle);
+        return Result<VehicleOutputDto>.Success(outputVehicle);
     }
 
-    public async Task<(bool IsSuccess, string ErrorMessage)> UpdateVehicleAsync(int id, VehicleInputDto vehicle)
+    public async Task<Result> UpdateVehicleAsync(int id, VehicleInputDto vehicle)
     {
         var vehicleToUpdate = await _context.Vehicles.FindAsync(id);
 
         if (vehicleToUpdate == null)
         {
-            return (false, "Not Found: This vehicle does not exist.");
+            return Result.Failure(ErrorType.NotFound, "Vehicle not found.");
         }
 
         var vehicleDuplicated = await _context.Vehicles.AnyAsync(vtu => vtu.RegistrationNumber == vehicle.RegistrationNumber && vtu.Id != id);
 
         if (vehicleDuplicated)
         {
-            return (false, "Conflict: A vehicle with the same registration number already exists.");
+            return Result.Failure(ErrorType.Conflict, "A vehicle with the same registration number already exists.");
         }
 
         vehicleToUpdate.RegistrationNumber = vehicle.RegistrationNumber;
@@ -130,16 +138,16 @@ public class VehicleService : IVehicleService
         vehicleToUpdate.Type = vehicle.Type;
 
         await _context.SaveChangesAsync();
-        return (true, string.Empty);
+        return Result.Success();
     }
 
-    public async Task<(bool IsSuccess, string ErrorMessage)> UpdateVehicleStatusAsync(int id)
+    public async Task<Result> UpdateVehicleStatusAsync(int id)
     {
         var vehicle = await _context.Vehicles.FindAsync(id);
 
         if (vehicle == null)
         {
-            return (false, "NotFound: This vehicle does not exist.");
+            return Result.Failure(ErrorType.NotFound, "Vehicle not found.");
         }
 
         if (vehicle.Status == VehicleStatus.Active)
@@ -152,27 +160,27 @@ public class VehicleService : IVehicleService
         }
         else
         {
-            return (false, "BadRequest: Vehicle status cannot be changed from Inactive.");
+            return Result.Failure(ErrorType.Validation, "Vehicle status cannot be changed from Inactive.");
         }
 
         await _context.SaveChangesAsync();
-        return (true, string.Empty);
+        return Result.Success();
 
     }
 
-    public async Task<bool> DeleteVehicleAsync(int id)
+    public async Task<Result> DeleteVehicleAsync(int id)
     {
         var vehicleToDelete = await _context.Vehicles.FindAsync(id);
 
         if (vehicleToDelete == null)
         {
-            return false;
+            return Result.Failure(ErrorType.NotFound, "Vehicle not found.");
         }
 
         vehicleToDelete.Status = VehicleStatus.Inactive;
 
         await _context.SaveChangesAsync();
-        return true;
+        return Result.Success();
     }
 
 }

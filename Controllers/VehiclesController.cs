@@ -7,12 +7,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using FleetTelemetryAPI.Services;
 using FleetTelemetryAPI.DTOs.Fleet;
+using FleetTelemetryAPI.Common;
 
 namespace FleetTelemetryAPI.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Authorize(Roles = "Admin")]
-public class VehiclesController : ControllerBase
+public class VehiclesController : ApiControllerBase
 {
     private readonly IVehicleService _service;
 
@@ -35,14 +36,14 @@ public class VehiclesController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult> GetVehicleById([FromRoute] int id)
     {
-        var vehicle = await _service.GetVehicleByIdAsync(id);
+        var result = await _service.GetVehicleByIdAsync(id);
 
-        if (vehicle == null)
+        if (result.IsSuccess)
         {
-            return NotFound();
+            return HandleFailure(result);
         }
 
-        return Ok(vehicle);
+        return Ok(result.Data);
     }
 
     // POST: api/Vehicles
@@ -53,7 +54,7 @@ public class VehiclesController : ControllerBase
 
         if(!result.IsSuccess)
         {
-            return Conflict(result.ErrorMessage.Substring(10));
+            return HandleFailure(result);
         }
 
         return CreatedAtAction(nameof(GetVehicleById), new { id = result.Data!.Id }, result.Data);
@@ -67,14 +68,7 @@ public class VehiclesController : ControllerBase
 
         if (!result.IsSuccess)
         {
-            if (result.ErrorMessage.StartsWith("NotFound"))
-            {
-                return NotFound();
-            }
-            else
-            {
-                return BadRequest(result.ErrorMessage.Substring(13));
-            }
+            HandleFailure(result);
         }
             
         return NoContent();
@@ -89,14 +83,7 @@ public class VehiclesController : ControllerBase
 
         if (!result.IsSuccess)
         {
-            if (result.ErrorMessage.StartsWith("Not Found"))
-            {
-                return NotFound();
-            }
-            else
-            {
-                return Conflict(result.ErrorMessage.Substring(10));
-            }
+            return HandleFailure(result);
         }
 
         return NoContent();
@@ -109,9 +96,9 @@ public class VehiclesController : ControllerBase
     {
         var result = await _service.DeleteVehicleAsync(id);
 
-        if (!result)
+        if (!result.IsSuccess)
         {
-            return NotFound();
+            return HandleFailure(result);
         }
 
         return NoContent();
