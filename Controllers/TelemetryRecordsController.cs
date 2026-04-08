@@ -25,9 +25,9 @@ public class TelemetryRecordsController : ApiControllerBase
 
     // GET: api/TelemetryRecords/VehicleId
     [HttpGet("{VehicleId}")]
-    public async Task<ActionResult> GetTelemetryRecordById([FromRoute] int vehicleId, [FromQuery] PaginationQueryDto pagination)
+    public async Task<ActionResult> GetTelemetryRecordById([FromRoute] int vehicleId, [FromQuery] PaginationQueryDto pagination, CancellationToken cancellationToken)
     {
-        var records = await _service.GetTelemetryRecordByIdAsync(vehicleId, pagination);
+        var records = await _service.GetTelemetryRecordByIdAsync(vehicleId, pagination, cancellationToken);
         return Ok(records);
     }
 
