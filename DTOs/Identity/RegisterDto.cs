@@ -10,6 +10,9 @@ public class RegisterDto
 
     [MaxLength(100, ErrorMessage = "Email cannot exceed 100 characters.")]
     public required string Email { get; set; }
+
+    [MinLength(6, ErrorMessage = "Password must be at least 6 characters long.")]
+    [MaxLength(100, ErrorMessage = "Password cannot exceed 100 characters.")]
     public required string Password { get; set; }
     public RoleType Role { get; set; }
 }

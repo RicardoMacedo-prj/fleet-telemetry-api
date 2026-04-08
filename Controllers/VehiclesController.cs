@@ -38,7 +38,7 @@ public class VehiclesController : ApiControllerBase
     {
         var result = await _service.GetVehicleByIdAsync(id);
 
-        if (result.IsSuccess)
+        if (!result.IsSuccess)
         {
             return HandleFailure(result);
         }

@@ -20,16 +20,24 @@ public class OverdueAssignmentsWorker : BackgroundService
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            using (var scope = _serviceProvider.CreateScope())
+            try
             {
-                var context = scope.ServiceProvider.GetRequiredService<FleetContext>();
+                using (var scope = _serviceProvider.CreateScope())
+                {
+                    var context = scope.ServiceProvider.GetRequiredService<FleetContext>();
 
-                await context.VehicleAssignments
-                    .Where(va => va.ReturnDate == null 
-                        && va.ExpectedReturnDate < DateTime.UtcNow 
-                        && va.Status == AssignmentStatus.Active)
-                    .ExecuteUpdateAsync(s => s.SetProperty(va => va.Status, AssignmentStatus.Overdue), stoppingToken);
+                    await context.VehicleAssignments
+                        .Where(va => va.ReturnDate == null
+                            && va.ExpectedReturnDate < DateTime.UtcNow
+                            && va.Status == AssignmentStatus.Active)
+                        .ExecuteUpdateAsync(s => s.SetProperty(va => va.Status, AssignmentStatus.Overdue), stoppingToken);
+                }
             }
+            catch (Exception ex)
+            
+                Console.WriteLine($"Error updating overdue assignments: {ex.Message}");
+            }
+
 
             await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
         }

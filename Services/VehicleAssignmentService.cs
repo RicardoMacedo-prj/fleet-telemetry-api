@@ -1,4 +1,5 @@
-﻿using FleetTelemetryAPI.Common;
+﻿using System.ComponentModel;
+using FleetTelemetryAPI.Common;
 using FleetTelemetryAPI.Data;
 using FleetTelemetryAPI.DTOs;
 using FleetTelemetryAPI.DTOs.Fleet;
@@ -99,7 +100,7 @@ public class VehicleAssignmentService: IVehicleAssignmentService
             return Result<VehicleAssignmentOutputDto>.Failure(ErrorType.Validation, $"Cannot assign vehicle. Current status is {vehicle.Status}.");
         }
 
-        if ((int)driver.LicenseCategory != (int)vehicle.Type)
+        if (!IsLicenseValidForVehicle(driver.LicenseCategory, vehicle.Type))
         {
 
             return Result<VehicleAssignmentOutputDto>.Failure(ErrorType.Validation, "Driver's license category does not match vehicle type.");
@@ -228,5 +229,16 @@ public class VehicleAssignmentService: IVehicleAssignmentService
 
         await _context.SaveChangesAsync();
         return Result.Success();
+    }
+
+    private bool IsLicenseValidForVehicle(LicenseCategory license, VehicleType vehicle)
+    {
+        return (license, vehicle) switch
+        {
+            (LicenseCategory.Light, VehicleType.Light) => true,
+            (LicenseCategory.Heavy, VehicleType.Heavy) => true,
+            (LicenseCategory.Motorcycle, VehicleType.Motorcycle) => true,
+            _ => false
+        };
     }
 }
