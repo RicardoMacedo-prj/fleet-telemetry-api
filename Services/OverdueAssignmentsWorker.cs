@@ -34,6 +34,7 @@ public class OverdueAssignmentsWorker : BackgroundService
                 }
             }
             catch (Exception ex)
+            { 
             
                 Console.WriteLine($"Error updating overdue assignments: {ex.Message}");
             }
